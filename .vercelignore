@@ -1,0 +1,18 @@
+# Never upload local secrets
+.env
+.env.*
+backend/.env
+
+# Installed dependencies and build output
+node_modules
+frontend/node_modules
+backend/node_modules
+frontend/dist
+
+# Heavy local fallback masters — Cloudinary delivers these in production
+frontend/public/media/products
+
+# Repo-only assets and logs
+docs
+*.log
+.image-tmp

@@ -16,6 +16,24 @@ import DeliveryPortal from './pages/DeliveryPortal';
 import AdminDashboard from './pages/AdminDashboard';
 import LoginPage from './pages/LoginPage';
 
+function RequireAuth({ children }) {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="shell flex min-h-[50vh] items-center justify-center text-sm text-muted">
+        Loading your session…
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+}
+
 function AppRoutes() {
   const [showRoleGate, setShowRoleGate] = useState(false);
 
@@ -35,9 +53,9 @@ function AppRoutes() {
           <Route path="/catalog" element={<CatalogPage />} />
           <Route path="/product/:id" element={<ProductDetailPage />} />
           <Route path="/product/timeline-preview" element={<ProductTimelinePage />} />
-          <Route path="/dashboard" element={<CustomerDashboard />} />
-          <Route path="/delivery" element={<DeliveryPortal />} />
-          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/dashboard" element={<RequireAuth><CustomerDashboard /></RequireAuth>} />
+          <Route path="/delivery" element={<RequireAuth><DeliveryPortal /></RequireAuth>} />
+          <Route path="/admin" element={<RequireAuth><AdminDashboard /></RequireAuth>} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

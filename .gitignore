@@ -11,5 +11,8 @@ dist/
 *.log
 .image-tmp/
 
+# Vercel local link
+.vercel/
+
 # OS noise
 .DS_Store

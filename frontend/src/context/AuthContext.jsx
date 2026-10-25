@@ -3,45 +3,82 @@ import api from '../api/client';
 
 const AuthContext = createContext(null);
 
+const TOKEN_KEY = 'couture_token';
+const USER_KEY = 'couture_user';
+
+const readStoredUser = () => {
+  try {
+    const cached = localStorage.getItem(USER_KEY);
+    return cached ? JSON.parse(cached) : null;
+  } catch {
+    return null;
+  }
+};
+
+const storeUser = (user) => {
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
+};
+
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('couture_token') || null);
+  const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY));
+  const [user, setUser] = useState(readStoredUser);
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState([]);
 
-  // Load current user profile on boot
+  // Restore the session from the token (and cached profile) on boot.
   useEffect(() => {
+    let active = true;
+
     const fetchUser = async () => {
       if (!token) {
-        // Auto-login as default Customer for frictionless hackathon preview
-        await switchRole('CUSTOMER');
-        setLoading(false);
+        if (active) {
+          setUser(null);
+          setNotifications([]);
+          setLoading(false);
+        }
         return;
       }
 
       try {
         const { data } = await api.get('/auth/me');
-        if (data.success) {
+        if (active && data.success) {
           setUser(data.user);
+          storeUser(data.user);
           setNotifications(data.notifications || []);
         }
       } catch (err) {
-        console.warn('Session expired or offline, switching to demo user:', err.message);
-        await switchRole('CUSTOMER');
+        if (!active) return;
+        if (err.response?.status === 401) {
+          localStorage.removeItem(TOKEN_KEY);
+          localStorage.removeItem(USER_KEY);
+          setToken(null);
+          setUser(null);
+          setNotifications([]);
+        }
+        // A network blip should not sign the user out; keep the cached profile.
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
 
+    setLoading(true);
     fetchUser();
+    return () => {
+      active = false;
+    };
   }, [token]);
+
+  const applySession = (data) => {
+    localStorage.setItem(TOKEN_KEY, data.token);
+    storeUser(data.user);
+    setToken(data.token);
+    setUser(data.user);
+  };
 
   const login = async (email, password) => {
     const { data } = await api.post('/auth/login', { email, password });
     if (data.success) {
-      localStorage.setItem('couture_token', data.token);
-      setToken(data.token);
-      setUser(data.user);
+      applySession(data);
       return data.user;
     }
   };
@@ -49,28 +86,25 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     const { data } = await api.post('/auth/register', userData);
     if (data.success) {
-      localStorage.setItem('couture_token', data.token);
-      setToken(data.token);
-      setUser(data.user);
+      applySession(data);
       return data.user;
     }
   };
 
   const logout = () => {
-    localStorage.removeItem('couture_token');
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
     setToken(null);
     setUser(null);
+    setNotifications([]);
   };
 
-  // 1-Click Role Switcher for seamless demo testing
+  // Explicit 1-click demo persona switch. Never triggered automatically.
   const switchRole = async (targetRole) => {
     try {
       const { data } = await api.post('/auth/switch-test-account', { role: targetRole });
       if (data.success) {
-        localStorage.setItem('couture_token', data.token);
-        setToken(data.token);
-        setUser(data.user);
-        // Refresh notifications
+        applySession(data);
         try {
           const meRes = await api.get('/auth/me');
           if (meRes.data.success) {
@@ -89,6 +123,7 @@ export const AuthProvider = ({ children }) => {
       const { data } = await api.get('/auth/me');
       if (data.success) {
         setUser(data.user);
+        storeUser(data.user);
         setNotifications(data.notifications || []);
       }
     } catch (err) {

@@ -18,13 +18,23 @@ const authenticate = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    const user = store.findUserById(decoded.id);
+    const storedUser = store.findUserById(decoded.id);
 
-    if (!user) {
-      return res.status(401).json({ success: false, message: 'User not found. Token invalid.' });
+    if (storedUser) {
+      req.user = storedUser;
+      return next();
     }
 
-    req.user = user;
+    // Serverless cold starts reset the in-memory store. The signed token already
+    // carries a password-free user snapshot, so trust it instead of logging out.
+    const snapshot = decoded.user && typeof decoded.user === 'object' ? decoded.user : {};
+    req.user = {
+      ...snapshot,
+      _id: decoded.id,
+      name: snapshot.name || (decoded.email ? decoded.email.split('@')[0] : 'Rentique member'),
+      email: snapshot.email || decoded.email,
+      role: snapshot.role || decoded.role || 'CUSTOMER'
+    };
     next();
   } catch (error) {
     return res.status(401).json({ success: false, message: 'Invalid or expired authentication token.' });

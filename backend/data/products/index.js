@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const mediaOverrides = require('../mediaOverrides.json');
 
 const { lehengas } = require('./lehengas');
 const { sarees } = require('./sarees');
@@ -40,7 +41,12 @@ const heroIdOf = (product) => {
   return match ? match[1] : null;
 };
 
-const hasFullSet = (id) => VIEWS.every((view) => fs.existsSync(path.join(MEDIA_DIR, `${id}-${view}.jpg`)));
+const hasFullSet = (id) =>
+  VIEWS.every(
+    (view) =>
+      Boolean(mediaOverrides[`/media/products/${id}-${view}.jpg`]) ||
+      fs.existsSync(path.join(MEDIA_DIR, `${id}-${view}.jpg`))
+  );
 
 function applyCategoryFallbacks(products) {
   const bySubCategory = new Map();

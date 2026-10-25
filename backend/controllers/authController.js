@@ -3,9 +3,20 @@ const jwt = require('jsonwebtoken');
 const store = require('../data/store');
 const { JWT_SECRET } = require('../middleware/auth');
 
+const toPublicUser = (user) => {
+  const { password, ...publicUser } = user;
+  return publicUser;
+};
+
 const generateToken = (user) => {
   return jwt.sign(
-    { id: user._id, role: user.role, email: user.email },
+    {
+      id: user._id,
+      role: user.role,
+      email: user.email,
+      // Snapshot lets a stateless serverless instance identify the user after a cold start.
+      user: toPublicUser(user)
+    },
     JWT_SECRET,
     { expiresIn: '30d' }
   );
@@ -40,13 +51,12 @@ exports.register = async (req, res) => {
     });
 
     const token = generateToken(newUser);
-    const { password: _, ...userWithoutPassword } = newUser;
 
     res.status(201).json({
       success: true,
       message: 'Account registered successfully',
       token,
-      user: userWithoutPassword
+      user: toPublicUser(newUser)
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -72,13 +82,12 @@ exports.login = async (req, res) => {
     }
 
     const token = generateToken(user);
-    const { password: _, ...userWithoutPassword } = user;
 
     res.json({
       success: true,
       message: 'Login successful',
       token,
-      user: userWithoutPassword
+      user: toPublicUser(user)
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -87,16 +96,15 @@ exports.login = async (req, res) => {
 
 exports.getMe = async (req, res) => {
   try {
-    const user = store.findUserById(req.user._id);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
-    const { password: _, ...userWithoutPassword } = user;
-    const notifications = store.getNotifications(user._id);
+    // The in-memory store resets between serverless instances, so fall back to the
+    // verified JWT snapshot injected by the auth middleware.
+    const storedUser = store.findUserById(req.user._id);
+    const user = storedUser || req.user;
+    const notifications = storedUser ? store.getNotifications(storedUser._id) : [];
 
     res.json({
       success: true,
-      user: userWithoutPassword,
+      user: toPublicUser(user),
       notifications
     });
   } catch (error) {
@@ -116,12 +124,11 @@ exports.switchTestAccount = async (req, res) => {
     }
 
     const token = generateToken(user);
-    const { password: _, ...userWithoutPassword } = user;
 
     res.json({
       success: true,
       token,
-      user: userWithoutPassword
+      user: toPublicUser(user)
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

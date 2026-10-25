@@ -58,7 +58,12 @@ exports.getProducts = async (req, res) => {
 
 exports.getFacets = async (req, res) => {
   try {
-    res.json({ success: true, facets: store.getFacets(), media: mediaService.status() });
+    const facets = store.getFacets();
+    facets.collections = facets.collections.map(collection => ({
+      ...collection,
+      image: mediaService.resolveUrl(collection.image)
+    }));
+    res.json({ success: true, facets, media: mediaService.status() });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

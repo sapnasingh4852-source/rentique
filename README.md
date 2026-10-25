@@ -2,6 +2,8 @@
 
 > A full-stack rental wardrobe for Indian celebrations. Borrow a Sabyasachi lehenga, a Kanjeevaram saree or a kundan set for the days that matter, return it after the function, and keep your security deposit. Built with React, Express and a Cloudinary-backed visual condition lifecycle.
 
+**Live demo:** [rentique-three.vercel.app](https://rentique-three.vercel.app) — the Vercel API runs on the in-memory data store, so records reset when a serverless instance cold-starts. Signed-in sessions survive via a password-free profile snapshot inside the JWT; a freshly registered account may need re-registering if its serverless instance recycles.
+
 ---
 
 ## The idea

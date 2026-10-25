@@ -34,7 +34,7 @@ const SELLER_PERKS = [
 ];
 
 export default function RoleSelectionModal({ isOpen, onClose }) {
-  const { user, switchRole, login, register } = useAuth();
+  const { switchRole, login, register } = useAuth();
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState('CHOICE');
@@ -103,15 +103,13 @@ export default function RoleSelectionModal({ isOpen, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-plum-deep/70 p-4 backdrop-blur-sm">
       <div className="relative my-auto w-full max-w-4xl overflow-hidden rounded-[28px] border border-line bg-surface shadow-lift">
-        {user && (
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            className="absolute right-4 top-4 z-10 rounded-full border border-line bg-surface/90 p-2 text-muted transition hover:text-ink"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        )}
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute right-4 top-4 z-10 rounded-full border border-line bg-surface/90 p-2 text-muted transition hover:text-ink"
+        >
+          <X className="h-4 w-4" />
+        </button>
 
         <div className="grid md:grid-cols-[0.85fr_1.15fr]">
           {/* Brand rail */}

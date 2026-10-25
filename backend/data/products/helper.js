@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { collectionMap } = require('../categories');
+const mediaOverrides = require('../mediaOverrides.json');
 
 const VIEW_TYPES = ['FRONT', 'BACK', 'SIDE', 'CLOSEUP', 'TAG'];
 const PRODUCT_MEDIA_DIR = path.join(__dirname, '../../../frontend/public/media/products');
@@ -44,14 +45,17 @@ function buildImages(collectionId, entry, collection, id) {
   return VIEW_TYPES.map((viewType) => {
     const view = viewType.toLowerCase();
     const fileName = `${id}-${view}.jpg`;
-    const generated = fs.existsSync(path.join(PRODUCT_MEDIA_DIR, fileName));
+    const localPath = `/media/products/${fileName}`;
+    const generated =
+      Boolean(mediaOverrides[localPath]) ||
+      fs.existsSync(path.join(PRODUCT_MEDIA_DIR, fileName));
 
     return {
       viewType,
       publicId: `rentique/catalog/${collectionId}/${id}_${view}`,
       cloudinaryPublicId: `rentique/catalog/${collectionId}/${id}_${view}`,
-      secureUrl: generated ? `/media/products/${fileName}` : fallbackImage,
-      sourceUrl: generated ? `/media/products/${fileName}` : fallbackImage,
+      secureUrl: generated ? localPath : fallbackImage,
+      sourceUrl: generated ? localPath : fallbackImage,
       resourceType: 'image',
       format: generated ? 'jpg' : 'webp',
       width: 900,
