@@ -1,8 +1,10 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const { connectDB, getDBStatus } = require('./config/db');
+const { getDBStatus } = require('./config/db');
 const cloudinaryService = require('./services/cloudinary.service');
+const store = require('./data/store');
+const persistence = require('./data/persistence');
 
 // Load environment variables
 dotenv.config();
@@ -21,8 +23,36 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 const path = require('path');
 const fs = require('fs');
 
-// Connect to Database
-connectDB();
+// Connect to MongoDB and hydrate the store before serving requests
+const appReady = persistence.init(store);
+
+app.use(async (req, res, next) => {
+  await appReady;
+  try {
+    await persistence.refresh();
+  } catch (error) {
+    console.error(`MongoDB store refresh failed: ${error.message}`);
+  }
+  next();
+});
+
+app.use((req, res, next) => {
+  const sendJson = res.json.bind(res);
+  res.json = (payload) => {
+    persistence
+      .flush()
+      .then(() => sendJson(payload))
+      .catch(error => {
+        console.error(`MongoDB store flush failed: ${error.message}`);
+        if (!res.headersSent) {
+          res.status(503);
+          sendJson({ success: false, message: 'Could not save changes to MongoDB. Please retry.' });
+        }
+      });
+    return res;
+  };
+  next();
+});
 
 // API Routes
 app.use('/api/auth', require('./routes/authRoutes'));
@@ -55,7 +85,8 @@ app.get('/api/health', (req, res) => {
     },
     database: {
       mongoConnected: getDBStatus(),
-      mode: getDBStatus() ? 'MongoDB Replica/Standalone' : 'High-Resilience In-Memory Data Store'
+      store: persistence.isEnabled() ? 'MONGODB' : 'MEMORY',
+      mode: persistence.isEnabled() ? 'MongoDB Persistent Store' : 'High-Resilience In-Memory Data Store'
     },
     timestamp: new Date().toISOString()
   });

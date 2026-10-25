@@ -2,7 +2,7 @@
 
 > A full-stack rental wardrobe for Indian celebrations. Borrow a Sabyasachi lehenga, a Kanjeevaram saree or a kundan set for the days that matter, return it after the function, and keep your security deposit. Built with React, Express and a Cloudinary-backed visual condition lifecycle.
 
-**Live demo:** [rentique-three.vercel.app](https://rentique-three.vercel.app) — the Vercel API runs on the in-memory data store, so records reset when a serverless instance cold-starts. Signed-in sessions survive via a password-free profile snapshot inside the JWT; a freshly registered account may need re-registering if its serverless instance recycles.
+**Live demo:** [rentique-three.vercel.app](https://rentique-three.vercel.app) — the Vercel API is backed by MongoDB Atlas, so accounts, rentals, payments and wallet changes survive serverless cold starts. Every mutation is written through to MongoDB before the API replies.
 
 ---
 
@@ -86,6 +86,19 @@ Every **Rent now** button opens `/checkout/:id` with the selected tenure, size a
 | Any other | Rejected with the covered examples in the message |
 
 **Demo credentials for the gateway:** UPI `ananya@okhdfcbank`; card `4111 1111 1111 1111`, any future `MM/YY`, any 3-digit CVV. The browser strips both down to display-safe metadata before the request.
+
+---
+
+## Data persistence
+
+The deployed API is backed by **MongoDB Atlas** (free M0, AWS Mumbai), so a serverless cold start no longer wipes accounts, rentals, payments or wallet balances.
+
+- **Collections** — `rentique_users`, `rentique_products`, `rentique_rentals`, `rentique_evidence`, `rentique_payments`, `rentique_inspections`, `rentique_penalties`, `rentique_notifications`.
+- **Cold start** — connect, seed any empty collection from the shipped catalog seed, then hydrate the in-memory store.
+- **Per request** — the store refreshes from MongoDB before the handler runs. Mutations are queued and flushed before the JSON response is sent; if the flush fails the API returns HTTP 503 instead of a false success.
+- **Fallback** — with no `MONGODB_URI`, or if Atlas is unreachable, the API serves the seeded in-memory store so local development works offline. `GET /api/health` shows `database.store: "MONGODB"` when persistence is active and `"MEMORY"` otherwise.
+
+Atlas network access allows `0.0.0.0/0` because Vercel's serverless egress IPs are not fixed — an accepted trade-off for a free-tier demo, paired with a dedicated SCRAM user and a single database. Credentials live only in Vercel environment variables and the git-ignored `backend/.env`.
 
 ---
 
@@ -256,7 +269,7 @@ The settlement reads straight from the inspection: **₹6,000 deposit − ₹400
 ## Tech stack
 
 - **Frontend** — React 18, React Router 6, Vite 6, Tailwind CSS 3, Lucide React, Axios.
-- **Backend** — Node.js, Express 4, MongoDB + Mongoose with an in-memory `MemoryDataStore` fallback, JWT auth, bcrypt, RBAC.
+- **Backend** — Node.js, Express 4, MongoDB Atlas (Mongoose connection plus native-driver collections) with a seeded in-memory `MemoryDataStore` fallback, JWT auth, bcrypt, RBAC.
 - **Media** — Cloudinary SDK v2 (catalog upload, evidence pipeline, transformed delivery), Multer memory uploads, Pillow/`sips` view derivation.
 - **Design** — Fraunces, Outfit, Tiro Devanagari Hindi; custom Tailwind palette and component classes (`bg-paper`, `text-plum`, `btn-primary`, `eyebrow`, `arch-frame`, `jaali-pattern`).
 
@@ -288,7 +301,7 @@ CLOUDINARY_API_SECRET=
 # or the single dashboard value: CLOUDINARY_URL=cloudinary://key:secret@cloud
 ```
 
-`MONGODB_URI` is optional; if Mongo is unavailable the API falls back to the seeded in-memory store. Never commit real Cloudinary or JWT secrets.
+`MONGODB_URI` is optional locally; without it, or if Mongo is unreachable, the API falls back to the seeded in-memory store and data resets on restart. The deployed demo sets `MONGODB_URI` to MongoDB Atlas, and `GET /api/health` reports `database.store: "MONGODB"` in that mode. Never commit real Cloudinary, MongoDB or JWT secrets.
 
 ---
 
@@ -329,7 +342,8 @@ backend/
   data/products/          per-collection seed files + price/image helper
   data/seedData.js        users, rentals, evidence, payments
   data/mediaOverrides.json  local path → Cloudinary secure_url map
-  data/store.js           Mongo-synced memory store, facets
+  data/store.js           in-memory store + facets; mutations queue MongoDB writes
+  data/persistence.js     Atlas seed, hydrate, per-request refresh, write-through flush
   services/pricing.service.js
   services/serviceability.service.js  demo pincode coverage, ETA and COD rules
   services/media.service.js      resolves listings and evidence through Cloudinary

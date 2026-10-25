@@ -6,6 +6,7 @@ const {
   initialPayments
 } = require('./seedData');
 const { COLLECTIONS, COLOR_FAMILIES } = require('./categories');
+const persistence = require('./persistence');
 
 /**
  * Resilient Data Store
@@ -57,6 +58,7 @@ class MemoryDataStore {
       ...userData
     };
     this.users.push(newUser);
+    persistence.queue('users', newUser);
     return newUser;
   }
 
@@ -64,6 +66,7 @@ class MemoryDataStore {
     const idx = this.users.findIndex(u => u._id.toString() === id.toString());
     if (idx !== -1) {
       this.users[idx] = { ...this.users[idx], ...updates };
+      persistence.queue('users', this.users[idx]);
       return this.users[idx];
     }
     return null;
@@ -234,6 +237,7 @@ class MemoryDataStore {
       ...productData
     };
     this.products.unshift(newProduct);
+    persistence.queue('products', newProduct);
     return newProduct;
   }
 
@@ -245,6 +249,7 @@ class MemoryDataStore {
         date: new Date().toISOString(),
         ...historyEntry
       });
+      persistence.queue('products', p);
       return p;
     }
     return null;
@@ -334,6 +339,10 @@ class MemoryDataStore {
     };
     this.evidence.push(newEvidence);
 
+    persistence.queue('rentals', newRental);
+    persistence.queue('payments', payment);
+    persistence.queue('evidence', newEvidence);
+
     return this.populateRental(newRental);
   }
 
@@ -341,7 +350,18 @@ class MemoryDataStore {
     const idx = this.rentals.findIndex(r => r._id.toString() === id.toString() || r.rentalNumber === id);
     if (idx !== -1) {
       this.rentals[idx] = { ...this.rentals[idx], ...updates };
+      persistence.queue('rentals', this.rentals[idx]);
       return this.populateRental(this.rentals[idx]);
+    }
+    return null;
+  }
+
+  updatePayment(id, updates) {
+    const idx = this.payments.findIndex(p => p._id.toString() === id.toString());
+    if (idx !== -1) {
+      this.payments[idx] = { ...this.payments[idx], ...updates };
+      persistence.queue('payments', this.payments[idx]);
+      return this.payments[idx];
     }
     return null;
   }
@@ -375,6 +395,7 @@ class MemoryDataStore {
         ev[key].push(mediaItemOrObject);
       }
     }
+    persistence.queue('evidence', ev);
     return ev;
   }
 
@@ -386,6 +407,7 @@ class MemoryDataStore {
       ...inspectionData
     };
     this.inspections.push(inspection);
+    persistence.queue('inspections', inspection);
     return inspection;
   }
 
@@ -398,6 +420,7 @@ class MemoryDataStore {
       ...penaltyData
     };
     this.penalties.push(penalty);
+    persistence.queue('penalties', penalty);
     return penalty;
   }
 
@@ -409,6 +432,7 @@ class MemoryDataStore {
     const idx = this.penalties.findIndex(p => p._id.toString() === id.toString());
     if (idx !== -1) {
       this.penalties[idx] = { ...this.penalties[idx], ...updates };
+      persistence.queue('penalties', this.penalties[idx]);
       return this.penalties[idx];
     }
     return null;
@@ -426,6 +450,7 @@ class MemoryDataStore {
       createdAt: new Date().toISOString()
     };
     this.notifications.unshift(notif);
+    persistence.queue('notifications', notif);
     return notif;
   }
 

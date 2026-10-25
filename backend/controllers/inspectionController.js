@@ -103,10 +103,12 @@ exports.submitVisualInspection = async (req, res) => {
       // Payment record updated with refund transaction
       const payment = store.payments.find(p => p.rentalId.toString() === rental._id.toString());
       if (payment) {
-        payment.refundStatus = 'PROCESSED_SOURCE';
-        payment.refundAmount = refundDetails.finalRefund;
-        payment.refundTransactionId = 'REF_TXN_' + Date.now();
-        payment.refundProcessedAt = new Date().toISOString();
+        store.updatePayment(payment._id, {
+          refundStatus: 'PROCESSED_SOURCE',
+          refundAmount: refundDetails.finalRefund,
+          refundTransactionId: 'REF_TXN_' + Date.now(),
+          refundProcessedAt: new Date().toISOString()
+        });
       }
     }
 
