@@ -27,6 +27,7 @@ connectDB();
 // API Routes
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/products', require('./routes/productRoutes'));
+app.use('/api/delivery', require('./routes/deliveryRoutes'));
 app.use('/api/rentals', require('./routes/rentalRoutes'));
 app.use('/api/evidence', require('./routes/evidenceRoutes'));
 app.use('/api/inspections', require('./routes/inspectionRoutes'));

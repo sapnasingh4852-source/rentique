@@ -19,8 +19,19 @@ const paymentSchema = new mongoose.Schema(
     },
     paymentGateway: {
       type: String,
-      default: 'Razorpay / Stripe Secure Gateway'
+      default: 'Rentique DemoPay'
     },
+    paymentMethod: {
+      type: String,
+      enum: ['UPI', 'CARD', 'COD', 'WALLET'],
+      default: 'CARD'
+    },
+    // Never the full PAN or CVV — only a display-safe label such as "VISA •••• 4242".
+    maskedInstrument: {
+      type: String,
+      default: ''
+    },
+    deliveryPincode: String,
     amount: {
       type: Number,
       required: true
@@ -32,7 +43,7 @@ const paymentSchema = new mongoose.Schema(
     },
     paymentStatus: {
       type: String,
-      enum: ['INITIATED', 'SUCCESS', 'FAILED'],
+      enum: ['INITIATED', 'PENDING', 'SUCCESS', 'FAILED'],
       default: 'SUCCESS'
     },
     refundStatus: {

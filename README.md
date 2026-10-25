@@ -60,6 +60,35 @@ The backend computes all pricing in `backend/services/pricing.service.js`; the p
 
 ---
 
+## Checkout, payments and delivery
+
+Every **Rent now** button opens `/checkout/:id` with the selected tenure, size and refund route. The page requests an authoritative quote from `GET /api/rentals/quote`, then collects:
+
+- **Delivery address** — receiver name, 10-digit Indian mobile, address line 1/2, city, state and 6-digit pincode. Signed-in customers get their saved profile address pre-filled.
+- **Pincode serviceability** — checked automatically against `GET /api/delivery/serviceability?pincode=…`. A serviceable result fills city/state and shows the area, ETA and COD availability; rejected pincodes block the order.
+- **Payment method** — UPI, card or cash on delivery:
+  - **UPI** validates `name@handle` format and stores only a masked ID such as `an***@okhdfcbank`.
+  - **Card** validates number (Luhn), brand, expiry and CVV in the browser. Only `brand •••• last4` and the cardholder name leave the browser. The API explicitly rejects a payload containing a full card number or CVV.
+  - **COD** re-checks pincode eligibility, records the payment as `PENDING`, and fixes the deposit refund to the Rentique wallet because there is no card/UPI source to return to. The customer dashboard shows the amount due and hides the refund-route switch for COD orders.
+- **Order summary** — rental fee, loyalty discount, refundable deposit, payable total, size selector and tenure.
+
+`POST /api/rentals` revalidates the address, Indian mobile, pincode serviceability, selected size, UPI format, card metadata and COD eligibility before creating the rental and payment record. This is a clearly labelled **demo gateway**: no real charge is made, and no full card number or CVV is ever accepted or stored.
+
+**Demo pincodes**
+
+| Pincode | Result |
+| --- | --- |
+| `560038` | Deliverable — Indiranagar, Bengaluru · 1 day · COD available |
+| `560034` | Deliverable — Koramangala, Bengaluru · 1 day · COD available |
+| `110001` | Deliverable — Connaught Place, New Delhi · 2 days · COD available |
+| `400001` | Deliverable — Fort, Mumbai · 2 days · COD available |
+| `999999` | **Rejected** — the demo "not serviceable" pincode |
+| Any other | Rejected with the covered examples in the message |
+
+**Demo credentials for the gateway:** UPI `ananya@okhdfcbank`; card `4111 1111 1111 1111`, any future `MM/YY`, any 3-digit CVV. The browser strips both down to display-safe metadata before the request.
+
+---
+
 ## How Cloudinary is used
 
 Cloudinary is the media backend for the entire rental lifecycle — listings, dispatch proof, customer receive evidence, return proof, inspection comparison and the condition timeline. It is not a decorative CDN or a stub. This checkout is wired to cloud `bbdiye5r`; `GET /api/health` reports `cloudinary.configured: true`, and `GET /api/products/facets` reports `deliveryMode: "CLOUDINARY_DELIVERY"` with **546 source-to-delivery mappings**.
@@ -218,7 +247,7 @@ The settlement reads straight from the inspection: **₹6,000 deposit − ₹400
 - **Storefront** — asymmetric arch hero, five-occasion celebration rail (weddings, festivals, sangeet, mehendi, cocktails), 8 collection cards, curated edits, deposit explainer with wallet mock, three-view inspection panel, testimonials, seller CTA, newsletter footer.
 - **Catalog** — URL-driven filters (collection, silhouette, budget, colour, occasion, wearer, designer, search), live facets and counts, sticky collection rail, active filter chips, mobile drawer.
 - **Product page** — front/fabric/tag gallery with zoom, pro-rata tenure selector (3/7/10 days), size selector, wallet vs original-source refund choice, transparent payable summary, condition timeline, Cloudinary media record, related pieces, mobile sticky booking bar.
-- **Booking** — creates a rental, reserves the deposit, shows a confirmation with rental number, tenure and refund route.
+- **Checkout & payments** — full delivery-address form, debounced pincode serviceability with demo accept/reject pincodes, UPI/card/COD demo gateway, masked payment metadata, COD pending status, and a confirmation with rental number, ETA, payment state and refund route.
 - **Dashes for all personas** — customer wardrobe/wallet/trust score, delivery pickup portal with return proof capture, boutique studio with inspection queue and condition grading.
 - **Trust & loyalty** — clean returns raise the score; ≥90 unlocks the 20% deposit rate; Silver/Gold/Platinum loyalty discounts.
 
@@ -284,6 +313,13 @@ cd backend && npm run media:check   # pings Cloudinary with the configured crede
 
 Covers pricing (pro-rata, deposits, late fees), auth/RBAC, catalog filtering, booking, receive verification, returns, inspection and wallet refunds. The media check confirms the Cloudinary cloud is reachable and the credentials are valid.
 
+Check pincode coverage without signing in:
+
+```bash
+curl -s "http://localhost:5001/api/delivery/serviceability?pincode=560038"  # serviceable: true
+curl -s "http://localhost:5001/api/delivery/serviceability?pincode=999999"  # serviceable: false
+```
+
 ---
 
 ## Project map
@@ -295,6 +331,7 @@ backend/
   data/mediaOverrides.json  local path → Cloudinary secure_url map
   data/store.js           Mongo-synced memory store, facets
   services/pricing.service.js
+  services/serviceability.service.js  demo pincode coverage, ETA and COD rules
   services/media.service.js      resolves listings and evidence through Cloudinary
   services/cloudinary.service.js upload, signing, private evidence URLs
   scripts/setup-cloudinary.js    interactive credential setup
@@ -306,7 +343,7 @@ frontend/
   public/media/evidence/  local masters for return-condition proof
   public/media/brand/     logo and shared authenticity card
   src/components/         navbar, footer, logo, product cards, gallery, timeline, modals
-  src/pages/              home, catalog, product detail, dashboards, login
+  src/pages/              home, catalog, product detail, checkout, dashboards, login
   src/services/cloudinaryUtils.js
   tailwind.config.js
 docs/screenshots/         flow screenshots embedded in this README

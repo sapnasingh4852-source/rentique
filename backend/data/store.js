@@ -274,17 +274,19 @@ class MemoryDataStore {
     const deliveryPartner = rental.deliveryPartnerId ? this.findUserById(rental.deliveryPartnerId) : null;
     const evidence = this.evidence.find(e => e.rentalId.toString() === rental._id.toString());
     const inspection = this.inspections.find(i => i.rentalId.toString() === rental._id.toString());
+    const payment = this.payments.find(p => p.rentalId.toString() === rental._id.toString()) || null;
     return {
       ...rental,
       product,
       customer,
       deliveryPartner,
       evidence,
-      inspection
+      inspection,
+      payment
     };
   }
 
-  createRental(rentalData) {
+  createRental(rentalData, paymentMeta = {}) {
     const rentalNumber = 'RNT-' + Math.floor(1000 + Math.random() * 9000);
     const newRental = {
       _id: 'rnt_' + Date.now(),
@@ -296,19 +298,24 @@ class MemoryDataStore {
     };
     this.rentals.unshift(newRental);
 
-    // Create corresponding payment record
+    // Payment record. UPI/card are simulated as captured by the demo gateway;
+    // COD stays PENDING until the delivery partner collects cash.
+    const paymentStatus = paymentMeta.paymentStatus || 'SUCCESS';
     const payment = {
       _id: 'pay_' + Date.now(),
       rentalId: newRental._id,
       customerId: newRental.customerId,
-      transactionId: 'TXN_' + Date.now(),
+      transactionId: paymentMeta.gatewayReference || 'TXN_' + Date.now(),
       amount: newRental.pricing.totalPaidInitial,
-      paymentGateway: 'Razorpay / Stripe Gateway',
+      paymentGateway: paymentMeta.paymentGateway || 'Rentique DemoPay',
+      paymentMethod: paymentMeta.paymentMethod || 'CARD',
+      maskedInstrument: paymentMeta.maskedInstrument || '',
       paymentType: 'INITIAL_RENTAL_DEPOSIT',
-      paymentStatus: 'SUCCESS',
+      paymentStatus,
       refundStatus: 'PENDING',
       refundAmount: 0,
       refundDestination: newRental.refundPreference || 'APP_WALLET',
+      deliveryPincode: newRental.delivery?.pincode,
       createdAt: new Date().toISOString()
     };
     this.payments.push(payment);

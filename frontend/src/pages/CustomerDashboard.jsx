@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { ShieldCheck, Wallet, RotateCcw, Award, CheckCircle2, AlertTriangle, ArrowRightLeft, Camera, Clock } from 'lucide-react';
+import { ShieldCheck, Wallet, RotateCcw, Award, CheckCircle2, AlertTriangle, ArrowRightLeft, Camera, Clock, Truck } from 'lucide-react';
 import api from '../api/client';
 import ReceiveVerificationModal from '../components/evidence/ReceiveVerificationModal';
 import ReturnRequestModal from '../components/evidence/ReturnRequestModal';
@@ -207,6 +207,25 @@ export default function CustomerDashboard() {
                           <Clock className="w-3 h-3 text-gray-400" />
                           <span>Due: {dueDateStr} ({daysRemaining >= 0 ? `${daysRemaining} days left` : `${Math.abs(daysRemaining)} days overdue`})</span>
                         </div>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] text-gray-500">
+                          {rental.delivery?.pincode && (
+                            <span className="inline-flex items-center gap-1">
+                              <Truck className="h-3 w-3 text-gray-400" />
+                              {rental.delivery.city} {rental.delivery.pincode}
+                            </span>
+                          )}
+                          <span
+                            className={`rounded-full px-2 py-0.5 font-semibold ${
+                              rental.paymentStatus === 'PENDING'
+                                ? 'bg-amber-50 text-amber-800'
+                                : 'bg-emerald-50 text-emerald-700'
+                            }`}
+                          >
+                            {rental.paymentStatus === 'PENDING'
+                              ? `COD · ₹${(rental.pricing?.totalPaidInitial || 0).toLocaleString()} due`
+                              : `Paid · ${rental.paymentMethod || 'CARD'}`}
+                          </span>
+                        </div>
                       </div>
                     </div>
 
@@ -214,13 +233,15 @@ export default function CustomerDashboard() {
                     <div className="md:col-span-4 bg-[#FAF8F5] p-3.5 rounded-2xl border border-[#E8E3D9] text-xs">
                       <div className="flex justify-between items-center mb-1">
                         <span className="text-[10px] uppercase tracking-wider font-bold text-gray-500">Refund Destination:</span>
-                        <button
-                          onClick={() => handleTogglePreference(rental._id, rental.refundPreference)}
-                          disabled={updatingPrefId === rental._id}
-                          className="text-[10px] uppercase tracking-wider text-[#9E7A45] hover:underline font-bold"
-                        >
-                          {updatingPrefId === rental._id ? 'Updating...' : 'Change'}
-                        </button>
+                        {rental.paymentMethod !== 'COD' && (
+                          <button
+                            onClick={() => handleTogglePreference(rental._id, rental.refundPreference)}
+                            disabled={updatingPrefId === rental._id}
+                            className="text-[10px] uppercase tracking-wider text-[#9E7A45] hover:underline font-bold"
+                          >
+                            {updatingPrefId === rental._id ? 'Updating...' : 'Change'}
+                          </button>
+                        )}
                       </div>
                       <div className="flex items-center space-x-1.5 text-[#0F0F11] font-medium text-xs">
                         {rental.refundPreference === 'APP_WALLET' ? (
@@ -235,6 +256,11 @@ export default function CustomerDashboard() {
                           </>
                         )}
                       </div>
+                      {rental.paymentMethod === 'COD' && (
+                        <p className="mt-1 text-[9px] font-light text-gray-400">
+                          Cash on delivery orders always refund to the wallet.
+                        </p>
+                      )}
                     </div>
 
                     {/* Action Buttons */}

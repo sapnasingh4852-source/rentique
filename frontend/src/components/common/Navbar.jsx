@@ -3,11 +3,13 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Bell,
   ChevronDown,
+  LogOut,
   Menu,
   Search,
   ShoppingBag,
   Store,
   Truck,
+  User,
   Wallet,
   X
 } from 'lucide-react';
@@ -30,7 +32,21 @@ const ROLE_LABELS = {
   DELIVERY_PARTNER: 'Logistics'
 };
 
-function AccountButton({ role }) {
+function AccountButton({ user }) {
+  if (!user) {
+    return (
+      <Link
+        to="/login"
+        className="inline-flex h-10 items-center gap-2 rounded-full bg-ink px-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-paper transition hover:bg-plum-deep"
+      >
+        <User className="h-4 w-4 text-gold" />
+        <span>Sign in</span>
+      </Link>
+    );
+  }
+
+  const role = user.role;
+
   if (role === 'ADMIN') {
     return (
       <Link
@@ -130,11 +146,17 @@ export default function Navbar({ onSearch }) {
                 aria-expanded={roleOpen}
               >
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                Demo: {ROLE_LABELS[role]}
+                {user ? `Demo: ${ROLE_LABELS[role]}` : 'Guest preview'}
                 <ChevronDown className={`h-3 w-3 transition ${roleOpen ? 'rotate-180' : ''}`} />
               </button>
               {roleOpen && (
                 <div className="absolute right-0 top-full z-50 mt-3 w-60 rounded-2xl border border-line bg-surface p-2 shadow-lift">
+                  {user && (
+                    <div className="mb-1 border-b border-line px-2 pb-2 pt-1">
+                      <p className="truncate text-xs font-semibold text-ink">{user.name}</p>
+                      <p className="truncate text-[10px] text-muted">{user.email}</p>
+                    </div>
+                  )}
                   <p className="px-2 pb-1.5 pt-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-muted">
                     View the demo as
                   </p>
@@ -161,6 +183,19 @@ export default function Navbar({ onSearch }) {
                   >
                     Login options
                   </button>
+                  {user && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRoleOpen(false);
+                        logout();
+                      }}
+                      className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-[0.14em] text-rani hover:bg-rani/5"
+                    >
+                      <LogOut className="h-3.5 w-3.5" />
+                      Sign out
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -216,7 +251,7 @@ export default function Navbar({ onSearch }) {
                 {mobileSearchOpen ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />}
               </button>
 
-              {role === 'CUSTOMER' && (
+              {user?.role === 'CUSTOMER' && (
                 <Link
                   to="/dashboard"
                   className="hidden h-10 items-center gap-1.5 rounded-full border border-forest/20 bg-forest-soft px-3 text-[11px] font-semibold text-forest transition hover:border-forest/40 sm:flex"
@@ -274,7 +309,7 @@ export default function Navbar({ onSearch }) {
                 )}
               </div>
 
-              <AccountButton role={role} />
+              <AccountButton user={user} />
 
               <button
                 type="button"
@@ -356,9 +391,15 @@ export default function Navbar({ onSearch }) {
                 <button type="button" onClick={() => setRoleModalOpen(true)} className="font-semibold text-plum underline">
                   Login options
                 </button>
-                <button type="button" onClick={logout} className="hover:text-plum">
-                  Sign out
-                </button>
+                {user ? (
+                  <button type="button" onClick={logout} className="hover:text-plum">
+                    Sign out
+                  </button>
+                ) : (
+                  <Link to="/login" className="font-semibold text-plum underline">
+                    Sign in
+                  </Link>
+                )}
               </div>
             </div>
           </div>

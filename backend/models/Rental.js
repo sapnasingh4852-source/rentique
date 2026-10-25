@@ -26,6 +26,31 @@ const rentalSchema = new mongoose.Schema(
       required: true,
       default: 3
     },
+    size: {
+      type: String,
+      default: 'Free Size'
+    },
+    delivery: {
+      fullName: { type: String, required: true },
+      phone: { type: String, required: true },
+      addressLine1: { type: String, required: true },
+      addressLine2: { type: String, default: '' },
+      city: { type: String, required: true },
+      state: { type: String, required: true },
+      pincode: { type: String, required: true },
+      area: String,
+      etaDays: Number
+    },
+    paymentMethod: {
+      type: String,
+      enum: ['UPI', 'CARD', 'COD'],
+      default: 'CARD'
+    },
+    paymentStatus: {
+      type: String,
+      enum: ['PENDING', 'SUCCESS', 'FAILED'],
+      default: 'SUCCESS'
+    },
     startDate: {
       type: Date,
       required: true,

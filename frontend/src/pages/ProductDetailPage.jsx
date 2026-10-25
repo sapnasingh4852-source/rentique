@@ -53,8 +53,6 @@ export default function ProductDetailPage() {
   const [selectedSize, setSelectedSize] = useState('');
   const [refundPreference, setRefundPreference] = useState('APP_WALLET');
   const [activeTab, setActiveTab] = useState('PIECE');
-  const [bookingInProgress, setBookingInProgress] = useState(false);
-  const [bookingSuccess, setBookingSuccess] = useState(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -147,21 +145,15 @@ export default function ProductDetailPage() {
     ? [product.size]
     : ['Free Size'];
 
-  const handleBookRental = async () => {
-    setBookingInProgress(true);
-    setError('');
-    try {
-      const { data } = await api.post('/rentals', {
-        productId: product._id,
-        rentalDurationDays: selectedDuration,
-        refundPreference
-      });
-      if (data.success) setBookingSuccess(data.rental);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Rental booking failed. Please try again.');
-    } finally {
-      setBookingInProgress(false);
+  const goToCheckout = () => {
+    const checkoutHref = `/checkout/${product._id}?duration=${selectedDuration}&size=${encodeURIComponent(
+      selectedSize
+    )}&refund=${refundPreference}`;
+    if (!user) {
+      navigate(`/login?redirect=${encodeURIComponent(checkoutHref)}`);
+      return;
     }
+    navigate(checkoutHref);
   };
 
   const gallery = product.listingImages || [];
@@ -393,23 +385,16 @@ export default function ProductDetailPage() {
                 </p>
               </div>
 
-              {error && (
-                <div className="mt-3 rounded-xl border border-rani/20 bg-rani-soft p-2.5 text-[10px] text-rani">
-                  {error}
-                </div>
-              )}
-
               <button
                 type="button"
-                onClick={handleBookRental}
-                disabled={bookingInProgress}
-                className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-plum px-5 py-3.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-paper transition hover:bg-saffron hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                onClick={goToCheckout}
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-plum px-5 py-3.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-paper transition hover:bg-saffron hover:text-white"
               >
                 <Sparkles className="h-4 w-4 text-gold" />
-                {bookingInProgress ? 'Reserving…' : `Rent now · ${formatINR(initialTotal)}`}
+                Rent now · {formatINR(initialTotal)}
               </button>
               <p className="mt-2 text-center text-[8.5px] text-muted">
-                Free cancellation within 2 hours · Dispatch in 2–4 days
+                Address, pincode check and payment on the next step
               </p>
             </div>
 
@@ -611,75 +596,15 @@ export default function ProductDetailPage() {
           </div>
           <button
             type="button"
-            onClick={handleBookRental}
-            disabled={bookingInProgress}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-plum py-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-paper disabled:opacity-60"
+            onClick={goToCheckout}
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-plum py-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-paper"
             style={{ maxWidth: 190 }}
           >
-            {bookingInProgress ? 'Reserving…' : 'Rent now'}
+            Rent now
             <ArrowRight className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
-
-      {/* Booking success */}
-      {bookingSuccess && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-plum-deep/70 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-3xl border border-line bg-surface p-7 text-center shadow-lift sm:p-8">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-forest-soft text-forest">
-              <CheckCircle2 className="h-7 w-7" />
-            </div>
-            <p className="eyebrow mt-4 text-saffron">Reservation confirmed</p>
-            <h3 className="display-title mt-2 text-[26px] text-plum">It&apos;s yours for {selectedDuration} days.</h3>
-            <p className="mt-2 text-[11px] leading-relaxed text-muted">
-              {product.title} is reserved. The dispatch studio will upload its visual condition record before
-              it leaves.
-            </p>
-
-            <div className="mt-5 space-y-2 rounded-2xl bg-paper p-4 text-left text-[10.5px]">
-              <div className="flex justify-between">
-                <span className="text-muted">Rental number</span>
-                <span className="font-mono font-semibold text-plum">{bookingSuccess.rentalNumber}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted">Tenure</span>
-                <span className="font-medium text-ink">{selectedDuration} days · size {selectedSize}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted">Paid now</span>
-                <span className="font-semibold text-ink">{formatINR(initialTotal)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted">Deposit refund</span>
-                <span className="font-semibold text-forest">
-                  {refundPreference === 'APP_WALLET' ? 'Rentique wallet (instant)' : 'Original payment source'}
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-5 flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={() => navigate('/dashboard')}
-                className="btn-dark w-full"
-              >
-                Go to my wardrobe
-                <ArrowRight className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setBookingSuccess(null);
-                  navigate('/catalog');
-                }}
-                className="text-[9.5px] font-semibold uppercase tracking-[0.14em] text-muted hover:text-plum"
-              >
-                Keep browsing
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

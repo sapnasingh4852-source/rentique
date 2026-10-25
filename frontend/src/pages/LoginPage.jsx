@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   Sparkles,
@@ -42,6 +42,21 @@ export default function LoginPage() {
 
   const { login, register, switchRole } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectParam = searchParams.get('redirect');
+  const redirectTo =
+    redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//') ? redirectParam : null;
+
+  const finishAuthentication = (targetRole) => {
+    sessionStorage.setItem('rentique_role_selected', 'true');
+    if (targetRole === 'ADMIN') {
+      navigate('/admin');
+    } else if (targetRole === 'DELIVERY_PARTNER') {
+      navigate('/delivery');
+    } else {
+      navigate(redirectTo || '/catalog');
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -54,14 +69,7 @@ export default function LoginPage() {
       } else {
         await login(email, password);
       }
-      sessionStorage.setItem('rentique_role_selected', 'true');
-      if (role === 'ADMIN') {
-        navigate('/admin');
-      } else if (role === 'DELIVERY_PARTNER') {
-        navigate('/delivery');
-      } else {
-        navigate('/catalog');
-      }
+      finishAuthentication(role);
     } catch (err) {
       setError(err.response?.data?.message || 'Authentication failed. Please check credentials.');
     } finally {
@@ -71,14 +79,7 @@ export default function LoginPage() {
 
   const handleTestLogin = async (targetRole) => {
     await switchRole(targetRole);
-    sessionStorage.setItem('rentique_role_selected', 'true');
-    if (targetRole === 'ADMIN') {
-      navigate('/admin');
-    } else if (targetRole === 'DELIVERY_PARTNER') {
-      navigate('/delivery');
-    } else {
-      navigate('/catalog');
-    }
+    finishAuthentication(targetRole);
   };
 
   return (

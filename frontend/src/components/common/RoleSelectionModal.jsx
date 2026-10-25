@@ -164,7 +164,7 @@ export default function RoleSelectionModal({ isOpen, onClose }) {
                 }}
                 className={tabClass('LOGIN')}
               >
-                Sign in
+                Sign in / Register
               </button>
             </div>
 

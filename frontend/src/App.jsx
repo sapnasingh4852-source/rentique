@@ -11,6 +11,7 @@ import HomePage from './pages/HomePage';
 import CatalogPage from './pages/CatalogPage';
 import ProductDetailPage from './pages/ProductDetailPage';
 import ProductTimelinePage from './pages/ProductTimelinePage';
+import CheckoutPage from './pages/CheckoutPage';
 import CustomerDashboard from './pages/CustomerDashboard';
 import DeliveryPortal from './pages/DeliveryPortal';
 import AdminDashboard from './pages/AdminDashboard';
@@ -53,6 +54,7 @@ function AppRoutes() {
           <Route path="/catalog" element={<CatalogPage />} />
           <Route path="/product/:id" element={<ProductDetailPage />} />
           <Route path="/product/timeline-preview" element={<ProductTimelinePage />} />
+          <Route path="/checkout/:id" element={<RequireAuth><CheckoutPage /></RequireAuth>} />
           <Route path="/dashboard" element={<RequireAuth><CustomerDashboard /></RequireAuth>} />
           <Route path="/delivery" element={<RequireAuth><DeliveryPortal /></RequireAuth>} />
           <Route path="/admin" element={<RequireAuth><AdminDashboard /></RequireAuth>} />
