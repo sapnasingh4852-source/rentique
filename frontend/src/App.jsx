@@ -6,6 +6,7 @@ import { RentalProvider } from './context/RentalContext';
 import Navbar from './components/common/Navbar';
 import Footer from './components/common/Footer';
 import RoleSelectionModal from './components/common/RoleSelectionModal';
+import ScrollToTop from './components/common/ScrollToTop';
 
 import HomePage from './pages/HomePage';
 import CatalogPage from './pages/CatalogPage';
@@ -47,6 +48,7 @@ function AppRoutes() {
 
   return (
     <div className="flex min-h-screen flex-col bg-paper text-ink">
+      <ScrollToTop />
       <Navbar />
       <main className="flex-1">
         <Routes>
