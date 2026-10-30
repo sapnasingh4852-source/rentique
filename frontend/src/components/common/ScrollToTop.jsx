@@ -14,16 +14,24 @@ export default function ScrollToTop() {
     if (navigationType === 'POP') return;
     // The global CSS sets scroll-behavior: smooth, which turns this into a
     // long animated scroll — on phones it stutters and stops midway when
-    // the user touches the screen. Force an instant jump instead, and jump
-    // once more on the next frame: if a smooth-scroll animation from the
+    // the user touches the screen. Jump instantly instead, and jump once
+    // more on the next frame: if a smooth-scroll animation from the
     // previous page was still in flight, Chromium resumes it after the
-    // style flip, and the second jump cancels it.
+    // navigation, and the second jump cancels it. behavior:'instant'
+    // overrides the CSS without touching inline styles (a synchronous
+    // style flip is unreliable — Chromium may apply the scroll with the
+    // restored smooth value, turning the jump into an animated glide).
     const jumpInstant = () => {
-      const html = document.documentElement;
-      const previous = html.style.scrollBehavior;
-      html.style.scrollBehavior = 'auto';
-      window.scrollTo(0, 0);
-      html.style.scrollBehavior = previous;
+      try {
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      } catch {
+        // Very old browsers reject 'instant' in the options dictionary.
+        const html = document.documentElement;
+        const previous = html.style.scrollBehavior;
+        html.style.scrollBehavior = 'auto';
+        window.scrollTo(0, 0);
+        html.style.scrollBehavior = previous;
+      }
     };
     jumpInstant();
     requestAnimationFrame(jumpInstant);
