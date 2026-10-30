@@ -7,6 +7,14 @@
     scroll-behavior: smooth;
   }
 
+  html,
+  body {
+    /* Decorative blobs and marquee tracks extend past the viewport on phones;
+       clip them so pages never pan sideways. `clip` keeps position:sticky working. */
+    overflow-x: hidden;
+    overflow-x: clip;
+  }
+
   body {
     background-color: #fbf6ec;
     color: #231726;

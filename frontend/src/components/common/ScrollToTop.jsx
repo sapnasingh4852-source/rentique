@@ -12,7 +12,14 @@ export default function ScrollToTop() {
 
   useEffect(() => {
     if (navigationType === 'POP') return;
+    // The global CSS sets scroll-behavior: smooth, which turns this into a
+    // long animated scroll — on phones it stutters and stops midway when
+    // the user touches the screen. Force an instant jump instead.
+    const html = document.documentElement;
+    const previous = html.style.scrollBehavior;
+    html.style.scrollBehavior = 'auto';
     window.scrollTo(0, 0);
+    html.style.scrollBehavior = previous;
   }, [pathname, search, navigationType]);
 
   return null;
