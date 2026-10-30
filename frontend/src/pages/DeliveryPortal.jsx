@@ -16,7 +16,7 @@ export default function DeliveryPortal() {
 
   const fetchDeliveryRentals = async () => {
     try {
-      const { data } = await api.get('/rentals/all');
+      const { data } = await api.get('/delivery/jobs');
       if (data.success) {
         setRentals(data.rentals || []);
       }
@@ -102,7 +102,26 @@ export default function DeliveryPortal() {
     }
   };
 
-  const pickupTasks = rentals.filter(r => ['RETURN_REQUESTED', 'DELIVERED'].includes(r.status));
+  const outboundTasks = rentals.filter(r => ['DISPATCH_PREPARED', 'OUT_FOR_DELIVERY'].includes(r.status));
+  const pickupTasks = rentals.filter(r => r.status === 'RETURN_REQUESTED');
+
+  const handleDeliveryTransition = async (rental, nextStatus) => {
+    setSubmitting(true);
+    try {
+      const { data } = await api.put(`/delivery/${rental._id}/delivery-status`, { status: nextStatus });
+      if (data.success) {
+        setSuccessMsg(data.message);
+        setSelectedRental(null);
+        setPickupMedia([]);
+        setNotes('');
+        fetchDeliveryRentals();
+      }
+    } catch (err) {
+      alert('Failed: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -122,8 +141,8 @@ export default function DeliveryPortal() {
         </div>
 
         <div className="bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/10 text-xs">
-          <span className="text-gray-300 block">Pending Pickups:</span>
-          <span className="text-xl font-bold text-gold">{pickupTasks.length} Assigned</span>
+          <span className="text-gray-300 block">Open Jobs:</span>
+          <span className="text-xl font-bold text-gold">{outboundTasks.length + pickupTasks.length} Assigned</span>
         </div>
       </div>
 
@@ -149,12 +168,21 @@ export default function DeliveryPortal() {
 
           {loading ? (
             <div className="p-8 text-center text-xs text-gray-400">Loading assignments...</div>
-          ) : pickupTasks.length === 0 ? (
+          ) : outboundTasks.length + pickupTasks.length === 0 ? (
             <div className="bg-white p-8 rounded-2xl border border-gray-100 text-center text-xs text-gray-500">
-              No pending return pickups assigned right now.
+              No delivery or pickup jobs assigned right now.
             </div>
           ) : (
-            pickupTasks.map(rental => (
+            [...outboundTasks, ...pickupTasks].map(rental => {
+              const isOutbound = ['DISPATCH_PREPARED', 'OUT_FOR_DELIVERY'].includes(rental.status);
+              const badgeClass =
+                rental.status === 'RETURN_REQUESTED'
+                  ? 'bg-amber-100 text-amber-800'
+                  : rental.status === 'OUT_FOR_DELIVERY'
+                    ? 'bg-blue-100 text-blue-800'
+                    : 'bg-purple-100 text-purple-800';
+
+              return (
               <div
                 key={rental._id}
                 onClick={() => {
@@ -172,10 +200,8 @@ export default function DeliveryPortal() {
                   <span className="font-mono font-bold text-gray-900 bg-gray-100 px-2 py-0.5 rounded">
                     #{rental.rentalNumber}
                   </span>
-                  <span className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] ${
-                    rental.status === 'RETURN_REQUESTED' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
-                  }`}>
-                    {rental.status}
+                  <span className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] ${badgeClass}`}>
+                    {isOutbound ? 'DELIVERY' : 'PICKUP'} · {rental.status}
                   </span>
                 </div>
 
@@ -190,23 +216,125 @@ export default function DeliveryPortal() {
                     <p className="text-xs text-gray-500">Customer: <strong>{rental.customer?.name}</strong></p>
                     <div className="flex items-center text-[11px] text-gray-500 mt-1">
                       <MapPin className="w-3 h-3 mr-1 text-gray-400" />
-                      <span>{rental.customer?.address?.street}, {rental.customer?.address?.city}</span>
+                      <span>
+                        {rental.delivery
+                          ? `${rental.delivery.addressLine1}, ${rental.delivery.city} — ${rental.delivery.pincode}`
+                          : `${rental.customer?.address?.street}, ${rental.customer?.address?.city}`}
+                      </span>
                     </div>
                   </div>
                 </div>
 
                 <div className="flex justify-between items-center pt-2 border-t border-gray-100 text-xs">
-                  <span className="text-gray-500">Tap to record pickup evidence</span>
+                  <span className="text-gray-500">
+                    {isOutbound
+                      ? rental.status === 'DISPATCH_PREPARED'
+                        ? 'Collect from boutique & start delivery'
+                        : 'Delivered? Mark it complete'
+                      : 'Tap to record pickup evidence'}
+                  </span>
                   <span className="text-goldDark font-bold">Select Task →</span>
                 </div>
               </div>
-            ))
+              );
+            })
           )}
         </div>
 
         {/* Evidence Submission Panel */}
         <div className="lg:col-span-6">
-          {selectedRental ? (
+          {selectedRental && ['DISPATCH_PREPARED', 'OUT_FOR_DELIVERY'].includes(selectedRental.status) ? (
+            /* Outbound delivery panel */
+            <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-5">
+              <div className="flex justify-between items-start pb-3 border-b border-gray-100">
+                <div>
+                  <span className="text-xs text-gray-400 font-mono">Task: #{selectedRental.rentalNumber}</span>
+                  <h3 className="font-serif text-lg font-bold text-gray-900">
+                    Outbound Delivery — To Customer
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    Collect the sealed garment bag from the boutique and hand it over to the customer.
+                  </p>
+                </div>
+                <span className={`px-2.5 py-1 rounded-full font-bold text-[10px] ${
+                  selectedRental.status === 'OUT_FOR_DELIVERY' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
+                }`}>
+                  {selectedRental.status}
+                </span>
+              </div>
+
+              {/* Order details */}
+              <div className="flex items-start space-x-3">
+                <img
+                  src={selectedRental.product?.listingImages?.[0]?.secureUrl}
+                  alt="product"
+                  className="w-14 h-18 object-cover rounded-lg border"
+                />
+                <div className="text-xs space-y-1">
+                  <h4 className="font-serif text-sm font-bold text-gray-900">{selectedRental.product?.title}</h4>
+                  <p className="text-gray-600">Size <strong>{selectedRental.size}</strong> · {selectedRental.rentalDurationDays} day(s) rental</p>
+                  <p className="text-gray-600">
+                    Deliver to: <strong>{selectedRental.delivery?.fullName}</strong> · {selectedRental.delivery?.phone}
+                  </p>
+                  <p className="text-gray-500">
+                    {selectedRental.delivery?.addressLine1}{selectedRental.delivery?.addressLine2 ? `, ${selectedRental.delivery.addressLine2}` : ''}, {selectedRental.delivery?.city}, {selectedRental.delivery?.state} — {selectedRental.delivery?.pincode}
+                  </p>
+                  {selectedRental.paymentStatus === 'PENDING' && selectedRental.paymentMethod === 'COD' && (
+                    <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-lg px-3 py-2 font-semibold">
+                      💵 Cash on delivery — collect ₹{selectedRental.pricing?.totalPaidInitial?.toLocaleString('en-IN')} at handover.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Progress */}
+              <div className="flex items-center text-[11px] text-gray-500 space-x-2">
+                <span className={selectedRental.status === 'DISPATCH_PREPARED' ? 'font-bold text-purple-700' : 'text-emerald-600 font-bold'}>
+                  1. Boutique dispatched
+                </span>
+                <span>→</span>
+                <span className={selectedRental.status === 'OUT_FOR_DELIVERY' ? 'font-bold text-blue-700' : ''}>
+                  2. Out for delivery
+                </span>
+                <span>→</span>
+                <span>3. Delivered</span>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 text-blue-900 p-3 rounded-xl text-xs space-y-1">
+                <span className="font-bold flex items-center">
+                  <ShieldCheck className="w-4 h-4 mr-1 text-blue-600" />
+                  Delivery Partner Protocol
+                </span>
+                <p className="text-[11px] text-blue-800">
+                  Collect from the boutique only after its dispatch proof is locked. Hand the sealed bag to the
+                  customer — they verify condition in their dashboard after delivery.
+                </p>
+              </div>
+
+              <div className="flex space-x-3">
+                {selectedRental.status === 'DISPATCH_PREPARED' && (
+                  <button
+                    onClick={() => handleDeliveryTransition(selectedRental, 'OUT_FOR_DELIVERY')}
+                    disabled={submitting}
+                    className="flex-1 bg-plum-deep text-white hover:bg-gold hover:text-black py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition shadow-md flex items-center justify-center disabled:opacity-60"
+                  >
+                    {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <Truck className="w-4 h-4 mr-1.5" />}
+                    Start Delivery
+                  </button>
+                )}
+                {selectedRental.status === 'OUT_FOR_DELIVERY' && (
+                  <button
+                    onClick={() => handleDeliveryTransition(selectedRental, 'DELIVERED')}
+                    disabled={submitting}
+                    className="flex-1 bg-emerald-600 text-white hover:bg-emerald-700 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition shadow-md flex items-center justify-center disabled:opacity-60"
+                  >
+                    {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <CheckCircle2 className="w-4 h-4 mr-1.5" />}
+                    Mark Delivered
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : selectedRental ? (
             <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-5">
               <div className="flex justify-between items-start pb-3 border-b border-gray-100">
                 <div>

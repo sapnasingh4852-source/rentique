@@ -35,6 +35,11 @@ exports.getAdminMetrics = async (req, res) => {
       .getRentals({ status: 'UNDER_INSPECTION' })
       .map(rental => mediaService.applyToRental(rental));
 
+    // New bookings waiting for the boutique to capture dispatch evidence
+    const dispatchQueue = store
+      .getRentals({ status: 'BOOKED' })
+      .map(rental => mediaService.applyToRental(rental));
+
     res.json({
       success: true,
       metrics: {
@@ -47,8 +52,10 @@ exports.getAdminMetrics = async (req, res) => {
         totalRevenue,
         totalDepositsHeld,
         totalRefundsProcessed,
-        customersCount
+        customersCount,
+        newOrders: dispatchQueue.length
       },
+      dispatchQueue,
       pendingInspectionQueue
     });
   } catch (error) {
