@@ -157,6 +157,35 @@ export default function CustomerDashboard() {
               const msDiff = new Date(rental.dueDate).getTime() - new Date().getTime();
               const daysRemaining = Math.ceil(msDiff / (1000 * 60 * 60 * 24));
 
+              // Lifecycle helper — tells the customer exactly where the order is and what happens next
+              const lifecycleMessages = {
+                BOOKED: {
+                  tone: 'bg-gray-50 text-gray-700 border-gray-200',
+                  text: 'Order confirmed. The boutique is preparing your piece — condition proof is captured before dispatch.'
+                },
+                DISPATCH_PREPARED: {
+                  tone: 'bg-purple-50 text-purple-800 border-purple-200',
+                  text: 'Boutique has locked the dispatch proof. Our logistics partner will collect it shortly.'
+                },
+                OUT_FOR_DELIVERY: {
+                  tone: 'bg-blue-50 text-blue-800 border-blue-200',
+                  text: `Out for delivery — expect it within ${rental.delivery?.etaDays || 1} day(s).`
+                },
+                DELIVERED: {
+                  tone: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+                  text: `Delivered — the piece is with you. Verify its condition, then request a return on or before ${dueDateStr} to protect your deposit.`
+                },
+                RETURN_REQUESTED: {
+                  tone: 'bg-blue-50 text-blue-800 border-blue-200',
+                  text: 'Return requested. Our logistics partner will pick it up and hand it to the boutique for visual inspection.'
+                },
+                UNDER_INSPECTION: {
+                  tone: 'bg-amber-50 text-amber-900 border-amber-200',
+                  text: 'The boutique is comparing before vs after photos. Your deposit settles right after inspection.'
+                }
+              };
+              const lifecycle = lifecycleMessages[rental.status] || null;
+
               return (
                 <div
                   key={rental._id}
@@ -187,6 +216,12 @@ export default function CustomerDashboard() {
                       </span>
                     </div>
                   </div>
+
+                  {lifecycle && (
+                    <div className={`text-[11px] font-light px-4 py-2.5 rounded-xl border ${lifecycle.tone}`}>
+                      {lifecycle.text}
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
                     {/* Product Info */}
@@ -275,7 +310,7 @@ export default function CustomerDashboard() {
                         </button>
                       )}
 
-                      {['DELIVERED', 'DISPATCH_PREPARED', 'OUT_FOR_DELIVERY'].includes(rental.status) && (
+                      {rental.status === 'DELIVERED' && (
                         <button
                           onClick={() => setSelectedRentalForReturn(rental)}
                           className="w-full bg-[#0F0F11] hover:bg-[#C8A26A] hover:text-[#0F0F11] text-white text-xs font-semibold tracking-wider uppercase py-2.5 px-3 rounded-full transition flex items-center justify-center space-x-1 shadow-sm"

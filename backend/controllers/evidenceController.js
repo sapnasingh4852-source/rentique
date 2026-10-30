@@ -170,6 +170,15 @@ exports.submitCustomerReturnEvidence = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Rental not found' });
     }
 
+    // A return only makes sense once the piece is with the customer; requesting
+    // earlier would create a pickup job that conflicts with the outbound delivery.
+    if (rental.status !== 'DELIVERED') {
+      return res.status(400).json({
+        success: false,
+        message: `Return can only be requested after delivery. This rental is currently ${rental.status}.`
+      });
+    }
+
     const returnMedia = returnPhotos.map(p => ({
       angle: p.angle || 'FRONT',
       publicId: p.publicId || `fashion_rental/evidence/return_${rental.rentalNumber}_${p.angle || 'angle'}_${Date.now()}`,
@@ -218,6 +227,15 @@ exports.submitDeliveryPickupEvidence = async (req, res) => {
     const rental = store.findRentalById(rentalId);
     if (!rental) {
       return res.status(404).json({ success: false, message: 'Rental not found' });
+    }
+
+    // Pickup proof is only valid for a requested return — it hands the piece to
+    // the boutique's inspection queue, so it must not fire on any other status.
+    if (rental.status !== 'RETURN_REQUESTED') {
+      return res.status(400).json({
+        success: false,
+        message: `Pickup proof can only be recorded for a requested return. This rental is currently ${rental.status}.`
+      });
     }
 
     const deliveryMedia = media.map(m => ({
