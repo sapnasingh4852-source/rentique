@@ -17,16 +17,26 @@ router.post('/upload-file', authenticate, upload.single('file'), async (req, res
     const isVideo = req.file.mimetype.startsWith('video');
     const folder = req.body.folder || 'fashion_rental/evidence';
 
+    // Contextual metadata turns Cloudinary into a queryable evidence ledger:
+    // every asset is tagged with rentalId / stage / angle and can later be
+    // listed back via the Admin API (resources_by_context).
+    const rawContext = String(req.body.context || '');
+    const context = rawContext.replace(/[^A-Za-z0-9_=@.\-|: ]/g, '').slice(0, 200);
+
+    const uploadOptions = { folder };
+    if (context) uploadOptions.context = context;
+
     let result;
     if (isVideo) {
-      result = await cloudinaryService.uploadVideo(req.file.buffer, { folder });
+      result = await cloudinaryService.uploadVideo(req.file.buffer, uploadOptions);
     } else {
-      result = await cloudinaryService.uploadImage(req.file.buffer, { folder });
+      result = await cloudinaryService.uploadImage(req.file.buffer, uploadOptions);
     }
 
     res.json({
       success: true,
-      asset: result
+      asset: result,
+      context: context || null
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -47,6 +57,9 @@ router.post('/:rentalId/delivery-pickup', authenticate, authorize('DELIVERY_PART
 
 // 5. Get evidence for a rental
 router.get('/:rentalId', authenticate, evidenceController.getRentalEvidence);
+
+// 5b. Cloudinary audit trail: every asset tagged with this rentalId's context metadata
+router.get('/:rentalId/cloudinary-assets', authenticate, evidenceController.getRentalCloudinaryAssets);
 
 // 6. Private/authenticated signed URL for damage evidence
 router.get('/private-url', authenticate, evidenceController.getPrivateEvidenceUrl);

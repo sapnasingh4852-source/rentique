@@ -37,6 +37,7 @@ export default function DispatchEvidenceModal({ rental, isOpen, onClose, onSucce
       const formData = new FormData();
       formData.append('file', file);
       formData.append('folder', 'fashion_rental/evidence/before_rental');
+      formData.append('context', `rentalId=${rental._id}|stage=BEFORE_RENTAL|angle=${angle}`);
 
       const { data } = await api.post('/evidence/upload-file', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }

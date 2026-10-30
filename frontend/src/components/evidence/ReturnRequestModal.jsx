@@ -28,6 +28,7 @@ export default function ReturnRequestModal({ rental, isOpen, onClose, onSuccess 
       const formData = new FormData();
       formData.append('file', file);
       formData.append('folder', 'fashion_rental/evidence/customer_return');
+      formData.append('context', `rentalId=${rental._id}|stage=CUSTOMER_RETURN|angle=${angle}`);
 
       const { data } = await api.post('/evidence/upload-file', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }

@@ -40,6 +40,9 @@ export default function DeliveryPortal() {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('folder', 'fashion_rental/evidence/delivery_pickup');
+      if (selectedRental) {
+        formData.append('context', `rentalId=${selectedRental._id}|stage=DELIVERY_PICKUP`);
+      }
 
       const { data } = await api.post('/evidence/upload-file', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }

@@ -25,6 +25,7 @@ export default function ReceiveVerificationModal({ rental, isOpen, onClose, onSu
         const formData = new FormData();
         formData.append('file', file);
         formData.append('folder', 'fashion_rental/evidence/customer_receive');
+        formData.append('context', `rentalId=${rental._id}|stage=CUSTOMER_RECEIVE|kind=${type}`);
 
         // Post to backend upload endpoint which streams to Cloudinary
         const { data } = await api.post('/evidence/upload-file', formData, {

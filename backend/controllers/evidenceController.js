@@ -1,5 +1,6 @@
 const store = require('../data/store');
 const cloudinaryService = require('../services/cloudinary.service');
+const cloudinary = require('../config/cloudinary');
 
 /**
  * 1. Generate Cloudinary Signature for direct browser upload
@@ -309,6 +310,42 @@ exports.getPrivateEvidenceUrl = async (req, res) => {
       signedUrl
     });
   } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * 8. Cloudinary Evidence Audit Trail
+ * Queries Cloudinary's Admin API for every asset tagged with this rentalId in
+ * its structured context metadata — the media ledger lives inside Cloudinary
+ * itself, independent of our own database.
+ */
+exports.getRentalCloudinaryAssets = async (req, res) => {
+  try {
+    const { rentalId } = req.params;
+
+    const result = await cloudinary.api.resources_by_context('rentalId', rentalId, { max_results: 60 });
+
+    res.json({
+      success: true,
+      rentalId,
+      count: result.resources?.length || 0,
+      assets: (result.resources || []).map(asset => ({
+        publicId: asset.public_id,
+        secureUrl: asset.secure_url,
+        resourceType: asset.resource_type,
+        format: asset.format,
+        bytes: asset.bytes,
+        context: asset.context?.custom || null,
+        uploadedAt: asset.created_at
+      }))
+    });
+  } catch (error) {
+    // Cloudinary replies 404 "Not found" when no asset carries this context —
+    // that is a valid empty ledger, not a failure.
+    if (error.http_code === 404) {
+      return res.json({ success: true, rentalId: req.params.rentalId, count: 0, assets: [] });
+    }
     res.status(500).json({ success: false, message: error.message });
   }
 };
